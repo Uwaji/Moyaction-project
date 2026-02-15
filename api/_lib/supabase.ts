@@ -1,17 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+function getEnv(key: string): string {
+  const value = process.env[key]
+  if (!value) throw new Error(`環境変数 ${key} が設定されていません`)
+  return value
+}
 
 /** RLS を尊重する匿名クライアント（ログ記録用） */
 export function createAnonClient() {
-  return createClient(supabaseUrl, supabaseAnonKey)
+  return createClient(getEnv('SUPABASE_URL'), getEnv('SUPABASE_ANON_KEY'))
 }
 
 /** ユーザーのJWTでRLSを適用するクライアント */
 export function createUserClient(jwt: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(getEnv('SUPABASE_URL'), getEnv('SUPABASE_ANON_KEY'), {
     global: {
       headers: { Authorization: `Bearer ${jwt}` },
     },
@@ -20,5 +22,5 @@ export function createUserClient(jwt: string) {
 
 /** RLS をバイパスする管理者クライアント（サーバーサイド専用） */
 export function createAdminClient() {
-  return createClient(supabaseUrl, supabaseServiceRoleKey)
+  return createClient(getEnv('SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'))
 }
