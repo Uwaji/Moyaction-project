@@ -1,6 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createAnonClient } from '../_lib/supabase'
-import { logError } from '../_lib/logger'
+import { createClient } from '@supabase/supabase-js'
+
+// --- Inlined helpers ---
+function createAnonClient() {
+  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+}
+
+async function logError(params: { userId?: string; errorMessage: string; stackTrace?: string; endpoint: string; statusCode: number }) {
+  try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+    await supabase.from('logs').insert({
+      user_id: params.userId ?? null,
+      error_message: params.errorMessage,
+      stack_trace: params.stackTrace ?? null,
+      endpoint: params.endpoint,
+      status_code: params.statusCode,
+    })
+  } catch (e) {
+    console.error('ログ記録に失敗:', e)
+  }
+}
+// --- End inlined helpers ---
 
 /** POST /api/auth/signup - ユーザー登録 */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
