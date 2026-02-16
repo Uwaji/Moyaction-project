@@ -109,8 +109,6 @@ export function HomePage() {
   const [showMoorayaForm, setShowMoorayaForm] = useState(false)
   const [moorayaContent, setMoorayaContent] = useState('')
   const [moorayaTag, setMoorayaTag] = useState<Mooraya['tag']>('worry')
-  const [editingMoorayaId, setEditingMoorayaId] = useState<number | null>(null)
-  const [editingMoorayaContent, setEditingMoorayaContent] = useState('')
   const [expandedMoorayaId, setExpandedMoorayaId] = useState<number | null>(null)
   const [moorayaLinks, setMoorayaLinks] = useState<Record<number, MoorayaTaskLink[]>>({})
 
@@ -125,11 +123,14 @@ export function HomePage() {
   const [taskReason, setTaskReason] = useState('')
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null)
 
-  // --- ステップ追加 state ---
+  // --- 作成フォームのステップ state ---
+  const [formSteps, setFormSteps] = useState<string[]>([])
+
+  // --- ステップ追加 state (モーダル内) ---
   const [addingStepTaskId, setAddingStepTaskId] = useState<number | null>(null)
   const [newStepTitle, setNewStepTitle] = useState('')
 
-  // --- Todo追加 state ---
+  // --- Todo追加 state (モーダル内) ---
   const [addingTodoStepId, setAddingTodoStepId] = useState<number | null>(null)
   const [newTodoTitle, setNewTodoTitle] = useState('')
 
@@ -146,6 +147,19 @@ export function HomePage() {
   // --- 共通 state ---
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // --- モーダル state ---
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editingMooraya, setEditingMooraya] = useState<Mooraya | null>(null)
+
+  // --- モーダル内編集 state ---
+  const [modalTaskTitle, setModalTaskTitle] = useState('')
+  const [modalTaskDescription, setModalTaskDescription] = useState('')
+  const [modalTaskDeadlineType, setModalTaskDeadlineType] = useState('')
+  const [modalTaskDeadlineDate, setModalTaskDeadlineDate] = useState('')
+  const [modalTaskWeight, setModalTaskWeight] = useState(1)
+  const [modalTaskReason, setModalTaskReason] = useState('')
+  const [modalMoorayaContent, setModalMoorayaContent] = useState('')
 
   // ===== データ取得 =====
   const fetchMooraya = useCallback(async () => {
@@ -164,15 +178,19 @@ export function HomePage() {
       .is('archived_at', null)
       .order('created_at', { ascending: false })
     if (data) {
-      // ステップをstep_number順にソート
       const sorted = data.map((t: Task) => ({
         ...t,
         task_steps: (t.task_steps ?? [])
           .sort((a: TaskStep, b: TaskStep) => a.step_number - b.step_number)
       }))
       setTaskList(sorted)
+      // モーダルで開いているタスクも更新
+      if (editingTask) {
+        const updated = sorted.find((t: Task) => t.id === editingTask.id)
+        if (updated) setEditingTask(updated)
+      }
     }
-  }, [])
+  }, [editingTask])
 
   const fetchMoorayaLinks = useCallback(async (moorayaId: number) => {
     const { data } = await supabase
@@ -240,21 +258,6 @@ export function HomePage() {
       setShowMoorayaForm(false)
       await fetchMooraya()
     }
-    setSubmitting(false)
-  }
-
-  const handleUpdateMooraya = async (id: number) => {
-    if (!editingMoorayaContent.trim()) return
-    setSubmitting(true)
-
-    await supabase
-      .from('mooraya')
-      .update({ content: editingMoorayaContent.trim() })
-      .eq('id', id)
-
-    setEditingMoorayaId(null)
-    setEditingMoorayaContent('')
-    await fetchMooraya()
     setSubmitting(false)
   }
 
@@ -344,9 +347,16 @@ export function HomePage() {
     if (err) {
       setError(err.message)
     } else if (newTask) {
-      await supabase
-        .from('task_steps')
-        .insert({ task_id: newTask.id, step_number: 1, title: taskTitle.trim() })
+      // フォームで入力されたステップを保存（なければタイトルをデフォルトステップに）
+      const stepsToInsert = formSteps.filter(s => s.trim()).length > 0
+        ? formSteps.filter(s => s.trim()).map((s, i) => ({
+            task_id: newTask.id,
+            step_number: i + 1,
+            title: s.trim(),
+          }))
+        : [{ task_id: newTask.id, step_number: 1, title: taskTitle.trim() }]
+
+      await supabase.from('task_steps').insert(stepsToInsert)
 
       setTaskTitle('')
       setTaskDescription('')
@@ -354,6 +364,7 @@ export function HomePage() {
       setTaskDeadlineDate('')
       setTaskWeight(1)
       setTaskReason('')
+      setFormSteps([])
       setShowTaskForm(false)
       await fetchTasks()
     }
@@ -446,11 +457,63 @@ export function HomePage() {
     if (res.success) {
       await fetchTasks()
       await fetchMooraya()
-      // 紐づくモヤモヤの解消確認は fetchMooraya で反映
     } else {
       alert(res.message || 'エラーが発生しました')
     }
     setSubmitting(false)
+  }
+
+  // ===== モーダル操作 =====
+  const openTaskModal = (task: Task) => {
+    setEditingTask(task)
+    setModalTaskTitle(task.title)
+    setModalTaskDescription(task.description ?? '')
+    setModalTaskDeadlineType(task.deadline_type)
+    setModalTaskDeadlineDate(task.deadline_date ?? '')
+    setModalTaskWeight(task.weight)
+    setModalTaskReason(task.reason ?? '')
+    setAddingStepTaskId(null)
+    setAddingTodoStepId(null)
+  }
+
+  const closeTaskModal = () => {
+    setEditingTask(null)
+    setAddingStepTaskId(null)
+    setAddingTodoStepId(null)
+    setNewStepTitle('')
+    setNewTodoTitle('')
+  }
+
+  const openMoorayaModal = async (m: Mooraya) => {
+    setEditingMooraya(m)
+    setModalMoorayaContent(m.content)
+    setLinkingMoorayaId(null)
+    await fetchMoorayaLinks(m.id)
+  }
+
+  const closeMoorayaModal = () => {
+    setEditingMooraya(null)
+    setLinkingMoorayaId(null)
+  }
+
+  // --- モーダル内保存 ---
+  const handleSaveTaskField = async (field: string, value: unknown) => {
+    if (!editingTask) return
+    await supabase
+      .from('tasks')
+      .update({ [field]: value })
+      .eq('id', editingTask.id)
+    await fetchTasks()
+  }
+
+  const handleSaveMoorayaContent = async () => {
+    if (!editingMooraya || !modalMoorayaContent.trim()) return
+    await supabase
+      .from('mooraya')
+      .update({ content: modalMoorayaContent.trim() })
+      .eq('id', editingMooraya.id)
+    setEditingMooraya({ ...editingMooraya, content: modalMoorayaContent.trim() })
+    await fetchMooraya()
   }
 
   // ===== ユーティリティ =====
@@ -489,6 +552,327 @@ export function HomePage() {
   }
 
   // ===== レンダリング =====
+
+  // --- やること編集モーダル ---
+  const renderTaskModal = () => {
+    if (!editingTask) return null
+    const task = editingTask
+    return (
+      <div className="modal-overlay" onClick={closeTaskModal}>
+        <div className="modal-container" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <button className="modal-close-btn" onClick={closeTaskModal}>× 閉じる</button>
+            <span className="modal-title">やること編集</span>
+          </div>
+          <div className="modal-body">
+            {/* タイトル編集 */}
+            <div className="modal-section">
+              <label className="modal-label">タイトル</label>
+              <input
+                type="text"
+                className="modal-input"
+                value={modalTaskTitle}
+                onChange={e => setModalTaskTitle(e.target.value)}
+                onBlur={() => {
+                  if (modalTaskTitle.trim() && modalTaskTitle !== task.title) {
+                    handleSaveTaskField('title', modalTaskTitle.trim())
+                  }
+                }}
+              />
+            </div>
+
+            {/* 概要編集 */}
+            <div className="modal-section">
+              <label className="modal-label">概要</label>
+              <textarea
+                className="modal-textarea"
+                value={modalTaskDescription}
+                onChange={e => setModalTaskDescription(e.target.value)}
+                onBlur={() => {
+                  const val = modalTaskDescription.trim() || null
+                  if (val !== (task.description ?? '')) {
+                    handleSaveTaskField('description', val)
+                  }
+                }}
+                rows={2}
+                placeholder="詳しい説明（任意）"
+              />
+            </div>
+
+            {/* 期限・重み・理由 */}
+            <div className="modal-row">
+              <div className="modal-section modal-section-half">
+                <label className="modal-label">期限</label>
+                <select
+                  className="modal-select"
+                  value={modalTaskDeadlineType}
+                  onChange={e => {
+                    setModalTaskDeadlineType(e.target.value)
+                    handleSaveTaskField('deadline_type', e.target.value)
+                    if (e.target.value !== 'specific_date') {
+                      handleSaveTaskField('deadline_date', null)
+                      setModalTaskDeadlineDate('')
+                    }
+                  }}
+                >
+                  {DEADLINE_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-section modal-section-half">
+                <label className="modal-label">重み</label>
+                <select
+                  className="modal-select"
+                  value={modalTaskWeight}
+                  onChange={e => {
+                    const w = Number(e.target.value)
+                    setModalTaskWeight(w)
+                    handleSaveTaskField('weight', w)
+                  }}
+                >
+                  {[1, 2, 3, 4, 5].map(w => (
+                    <option key={w} value={w}>{w}{w >= 4 ? ' (監査対象)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {modalTaskDeadlineType === 'specific_date' && (
+              <div className="modal-section">
+                <label className="modal-label">期限日付</label>
+                <input
+                  type="date"
+                  className="modal-input"
+                  value={modalTaskDeadlineDate}
+                  onChange={e => {
+                    setModalTaskDeadlineDate(e.target.value)
+                    handleSaveTaskField('deadline_date', e.target.value || null)
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="modal-section">
+              <label className="modal-label">やる理由</label>
+              <input
+                type="text"
+                className="modal-input"
+                value={modalTaskReason}
+                onChange={e => setModalTaskReason(e.target.value)}
+                onBlur={() => {
+                  if (modalTaskReason !== (task.reason ?? '')) {
+                    handleSaveTaskField('reason', modalTaskReason.trim() || null)
+                  }
+                }}
+                placeholder="やる理由を入力"
+              />
+            </div>
+
+            {/* ステップ一覧 */}
+            <div className="modal-section">
+              <label className="modal-label">ステップ</label>
+              <div className="steps-list">
+                {(task.task_steps ?? []).map((step, idx) => {
+                  const stepStatus = getStepStatus(step, idx, task.task_steps)
+                  return (
+                    <div key={step.id} className={`step-item step-${stepStatus}`}>
+                      <div className="step-header">
+                        <label className="step-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={step.completed}
+                            onChange={() => handleToggleStep(step)}
+                            disabled={stepStatus === 'pending'}
+                          />
+                          <span className={step.completed ? 'step-title-done' : ''}>
+                            {step.step_number}. {step.title}
+                          </span>
+                        </label>
+                        <button
+                          className="btn-tiny btn-danger"
+                          onClick={() => handleDeleteStep(step.id)}
+                          title="ステップ削除"
+                        >
+                          x
+                        </button>
+                      </div>
+
+                      {/* Todo一覧 */}
+                      {step.task_step_todos && step.task_step_todos.length > 0 && (
+                        <div className="todos-list">
+                          {step.task_step_todos.map(todo => (
+                            <div key={todo.id} className="todo-item">
+                              <label className="todo-checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={todo.completed}
+                                  onChange={() => handleToggleTodo(todo)}
+                                />
+                                <span className={todo.completed ? 'todo-title-done' : ''}>
+                                  {todo.title}
+                                </span>
+                              </label>
+                              <button
+                                className="btn-tiny btn-danger"
+                                onClick={() => handleDeleteTodo(todo.id)}
+                                title="Todo削除"
+                              >
+                                x
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Todo追加 */}
+                      {addingTodoStepId === step.id ? (
+                        <div className="add-inline">
+                          <input
+                            type="text"
+                            value={newTodoTitle}
+                            onChange={e => setNewTodoTitle(e.target.value)}
+                            placeholder="Todoタイトル"
+                            onKeyDown={e => e.key === 'Enter' && handleAddTodo(step.id)}
+                          />
+                          <button className="btn-tiny btn-save" onClick={() => handleAddTodo(step.id)} disabled={submitting}>追加</button>
+                          <button className="btn-tiny" onClick={() => setAddingTodoStepId(null)}>取消</button>
+                        </div>
+                      ) : (
+                        <button
+                          className="btn-tiny btn-add-inline"
+                          onClick={() => { setAddingTodoStepId(step.id); setNewTodoTitle('') }}
+                        >
+                          + Todo
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ステップ追加 */}
+              {addingStepTaskId === task.id ? (
+                <div className="add-inline" style={{ marginTop: '0.5rem', marginLeft: 0 }}>
+                  <input
+                    type="text"
+                    value={newStepTitle}
+                    onChange={e => setNewStepTitle(e.target.value)}
+                    placeholder="ステップタイトル"
+                    onKeyDown={e => e.key === 'Enter' && handleAddStep(task.id)}
+                  />
+                  <button className="btn-tiny btn-save" onClick={() => handleAddStep(task.id)} disabled={submitting}>追加</button>
+                  <button className="btn-tiny" onClick={() => setAddingStepTaskId(null)}>取消</button>
+                </div>
+              ) : (
+                <button
+                  className="btn-small btn-add-step"
+                  onClick={() => { setAddingStepTaskId(task.id); setNewStepTitle('') }}
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  + ステップ追加
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- モヤモヤ編集モーダル ---
+  const renderMoorayaModal = () => {
+    if (!editingMooraya) return null
+    const m = editingMooraya
+    return (
+      <div className="modal-overlay" onClick={closeMoorayaModal}>
+        <div className="modal-container" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <button className="modal-close-btn" onClick={closeMoorayaModal}>× 閉じる</button>
+            <span className="modal-title">モヤモヤ編集</span>
+          </div>
+          <div className="modal-body">
+            {/* テキスト編集 */}
+            <div className="modal-section">
+              <label className="modal-label">テキスト</label>
+              <textarea
+                className="modal-textarea"
+                value={modalMoorayaContent}
+                onChange={e => setModalMoorayaContent(e.target.value)}
+                rows={3}
+              />
+              <button
+                className="btn-small btn-save"
+                onClick={handleSaveMoorayaContent}
+                disabled={submitting}
+                style={{ marginTop: '0.5rem' }}
+              >
+                保存
+              </button>
+            </div>
+
+            {/* タグ表示（変更不可） */}
+            <div className="modal-section">
+              <label className="modal-label">タグ</label>
+              <span className={`tag-badge tag-${m.tag}`}>{getTagLabel(m.tag)}</span>
+            </div>
+
+            {/* 紐づくやること一覧 */}
+            <div className="modal-section">
+              <label className="modal-label">紐づくやること</label>
+              {(moorayaLinks[m.id] ?? []).length === 0 ? (
+                <p className="detail-empty">まだ紐づくやることはありません</p>
+              ) : (
+                <div className="linked-tasks-list">
+                  {(moorayaLinks[m.id] ?? []).map(link => (
+                    <div key={link.id} className="linked-task-item">
+                      <span className={`linked-task-title ${(link.task as unknown as Task)?.completed_at ? 'done' : ''}`}>
+                        {(link.task as unknown as Task)?.title ?? `Task #${link.task_id}`}
+                      </span>
+                      {(link.task as unknown as Task)?.completed_at && <span className="done-badge">完了</span>}
+                      <button className="btn-tiny btn-danger" onClick={() => handleUnlinkTask(link.id, m.id)}>解除</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* やること紐づけUI */}
+              {linkingMoorayaId === m.id ? (
+                <div className="link-task-picker">
+                  <p className="picker-label">紐づけるやることを選択:</p>
+                  {taskList.filter(t => !(moorayaLinks[m.id] ?? []).some(l => l.task_id === t.id)).length === 0 ? (
+                    <p className="detail-empty">紐づけ可能なやることがありません</p>
+                  ) : (
+                    taskList
+                      .filter(t => !(moorayaLinks[m.id] ?? []).some(l => l.task_id === t.id))
+                      .map(t => (
+                        <button
+                          key={t.id}
+                          className="btn-small link-task-btn"
+                          onClick={() => handleLinkTaskToMooraya(m.id, t.id)}
+                          disabled={submitting}
+                        >
+                          {t.title}
+                        </button>
+                      ))
+                  )}
+                  <button className="btn-tiny" onClick={() => setLinkingMoorayaId(null)}>閉じる</button>
+                </div>
+              ) : (
+                <button
+                  className="btn-small btn-add-step"
+                  onClick={() => setLinkingMoorayaId(m.id)}
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  + やることを紐づける
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // --- ホームタブ ---
   const renderHome = () => (
@@ -581,6 +965,40 @@ export function HomePage() {
                 />
               </div>
             )}
+
+            {/* ステップ入力セクション */}
+            <div className="form-group">
+              <label>ステップ（任意）</label>
+              {formSteps.map((step, idx) => (
+                <div key={idx} className="form-step-row">
+                  <input
+                    type="text"
+                    value={step}
+                    onChange={e => {
+                      const newSteps = [...formSteps]
+                      newSteps[idx] = e.target.value
+                      setFormSteps(newSteps)
+                    }}
+                    placeholder={`ステップ ${idx + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className="btn-tiny btn-danger"
+                    onClick={() => setFormSteps(formSteps.filter((_, i) => i !== idx))}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn-small btn-add-step"
+                onClick={() => setFormSteps([...formSteps, ''])}
+              >
+                + ステップ追加
+              </button>
+            </div>
+
             <button type="submit" className="btn-primary" disabled={submitting}>
               {submitting ? '作成中...' : 'やりたいことを作成'}
             </button>
@@ -634,10 +1052,13 @@ export function HomePage() {
                   )}
                 </div>
 
-                {/* 展開時: ステップ・Todo詳細 */}
+                {/* 展開時: チェックモード（ステップチェックのみ + 編集ボタン） */}
                 {expanded && (
                   <div className="task-detail">
-                    <h4 className="detail-heading">ステップ</h4>
+                    <div className="detail-header-row">
+                      <h4 className="detail-heading">ステップ</h4>
+                      <button className="btn-small btn-edit" onClick={() => openTaskModal(task)}>編集</button>
+                    </div>
                     <div className="steps-list">
                       {(task.task_steps ?? []).map((step, idx) => {
                         const stepStatus = getStepStatus(step, idx, task.task_steps)
@@ -655,16 +1076,9 @@ export function HomePage() {
                                   {step.step_number}. {step.title}
                                 </span>
                               </label>
-                              <button
-                                className="btn-tiny btn-danger"
-                                onClick={() => handleDeleteStep(step.id)}
-                                title="ステップ削除"
-                              >
-                                x
-                              </button>
                             </div>
 
-                            {/* Todo一覧 */}
+                            {/* Todo一覧（チェックのみ） */}
                             {step.task_step_todos && step.task_step_todos.length > 0 && (
                               <div className="todos-list">
                                 {step.task_step_todos.map(todo => (
@@ -679,66 +1093,14 @@ export function HomePage() {
                                         {todo.title}
                                       </span>
                                     </label>
-                                    <button
-                                      className="btn-tiny btn-danger"
-                                      onClick={() => handleDeleteTodo(todo.id)}
-                                      title="Todo削除"
-                                    >
-                                      x
-                                    </button>
                                   </div>
                                 ))}
                               </div>
-                            )}
-
-                            {/* Todo追加 */}
-                            {addingTodoStepId === step.id ? (
-                              <div className="add-inline">
-                                <input
-                                  type="text"
-                                  value={newTodoTitle}
-                                  onChange={e => setNewTodoTitle(e.target.value)}
-                                  placeholder="Todoタイトル"
-                                  onKeyDown={e => e.key === 'Enter' && handleAddTodo(step.id)}
-                                />
-                                <button className="btn-tiny btn-save" onClick={() => handleAddTodo(step.id)} disabled={submitting}>追加</button>
-                                <button className="btn-tiny" onClick={() => setAddingTodoStepId(null)}>取消</button>
-                              </div>
-                            ) : (
-                              <button
-                                className="btn-tiny btn-add-inline"
-                                onClick={() => { setAddingTodoStepId(step.id); setNewTodoTitle('') }}
-                              >
-                                + Todo
-                              </button>
                             )}
                           </div>
                         )
                       })}
                     </div>
-
-                    {/* ステップ追加 */}
-                    {addingStepTaskId === task.id ? (
-                      <div className="add-inline" style={{ marginTop: '0.5rem' }}>
-                        <input
-                          type="text"
-                          value={newStepTitle}
-                          onChange={e => setNewStepTitle(e.target.value)}
-                          placeholder="ステップタイトル"
-                          onKeyDown={e => e.key === 'Enter' && handleAddStep(task.id)}
-                        />
-                        <button className="btn-tiny btn-save" onClick={() => handleAddStep(task.id)} disabled={submitting}>追加</button>
-                        <button className="btn-tiny" onClick={() => setAddingStepTaskId(null)}>取消</button>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn-small btn-add-step"
-                        onClick={() => { setAddingStepTaskId(task.id); setNewStepTitle('') }}
-                        style={{ marginTop: '0.5rem' }}
-                      >
-                        + ステップ追加
-                      </button>
-                    )}
 
                     {/* アクションボタン */}
                     <div className="item-actions" style={{ marginTop: '0.75rem' }}>
@@ -810,93 +1172,46 @@ export function HomePage() {
         <div className="item-list">
           {moorayaList.map(m => (
             <div key={m.id} className="item-card">
-              {editingMoorayaId === m.id ? (
-                <div className="edit-inline">
-                  <textarea
-                    value={editingMoorayaContent}
-                    onChange={e => setEditingMoorayaContent(e.target.value)}
-                    rows={2}
-                  />
-                  <div className="item-actions">
-                    <button className="btn-small btn-save" disabled={submitting} onClick={() => handleUpdateMooraya(m.id)}>保存</button>
-                    <button className="btn-small" onClick={() => setEditingMoorayaId(null)}>キャンセル</button>
-                  </div>
+              <div
+                className="item-card-header clickable"
+                onClick={() => handleExpandMooraya(m.id)}
+              >
+                <span className="item-content">{m.content}</span>
+                <div className="item-header-right">
+                  <span className={`tag-badge tag-${m.tag}`}>{getTagLabel(m.tag)}</span>
+                  <span className="expand-icon">{expandedMoorayaId === m.id ? '▲' : '▼'}</span>
                 </div>
-              ) : (
-                <>
-                  <div
-                    className="item-card-header clickable"
-                    onClick={() => handleExpandMooraya(m.id)}
-                  >
-                    <span className="item-content">{m.content}</span>
-                    <div className="item-header-right">
-                      <span className={`tag-badge tag-${m.tag}`}>{getTagLabel(m.tag)}</span>
-                      <span className="expand-icon">{expandedMoorayaId === m.id ? '▲' : '▼'}</span>
-                    </div>
+              </div>
+
+              {/* 展開時: チェックモード（紐づくやること一覧 読み取り専用 + 編集ボタン） */}
+              {expandedMoorayaId === m.id && (
+                <div className="mooraya-detail">
+                  <div className="detail-header-row">
+                    <h4 className="detail-heading">紐づくやること</h4>
+                    <button className="btn-small btn-edit" onClick={() => openMoorayaModal(m)}>編集</button>
                   </div>
-
-                  {/* 展開時: 紐づくやることリスト */}
-                  {expandedMoorayaId === m.id && (
-                    <div className="mooraya-detail">
-                      <h4 className="detail-heading">紐づくやること</h4>
-                      {(moorayaLinks[m.id] ?? []).length === 0 ? (
-                        <p className="detail-empty">まだ紐づくやることはありません</p>
-                      ) : (
-                        <div className="linked-tasks-list">
-                          {(moorayaLinks[m.id] ?? []).map(link => (
-                            <div key={link.id} className="linked-task-item">
-                              <span className={`linked-task-title ${(link.task as unknown as Task)?.completed_at ? 'done' : ''}`}>
-                                {(link.task as unknown as Task)?.title ?? `Task #${link.task_id}`}
-                              </span>
-                              {(link.task as unknown as Task)?.completed_at && <span className="done-badge">完了</span>}
-                              <button className="btn-tiny btn-danger" onClick={() => handleUnlinkTask(link.id, m.id)}>解除</button>
-                            </div>
-                          ))}
+                  {(moorayaLinks[m.id] ?? []).length === 0 ? (
+                    <p className="detail-empty">まだ紐づくやることはありません</p>
+                  ) : (
+                    <div className="linked-tasks-list">
+                      {(moorayaLinks[m.id] ?? []).map(link => (
+                        <div key={link.id} className="linked-task-item">
+                          <span className={`linked-task-title ${(link.task as unknown as Task)?.completed_at ? 'done' : ''}`}>
+                            {(link.task as unknown as Task)?.title ?? `Task #${link.task_id}`}
+                          </span>
+                          {(link.task as unknown as Task)?.completed_at && <span className="done-badge">完了</span>}
                         </div>
-                      )}
-
-                      {/* やること紐づけUI */}
-                      {linkingMoorayaId === m.id ? (
-                        <div className="link-task-picker">
-                          <p className="picker-label">紐づけるやることを選択:</p>
-                          {taskList.filter(t => !(moorayaLinks[m.id] ?? []).some(l => l.task_id === t.id)).length === 0 ? (
-                            <p className="detail-empty">紐づけ可能なやることがありません</p>
-                          ) : (
-                            taskList
-                              .filter(t => !(moorayaLinks[m.id] ?? []).some(l => l.task_id === t.id))
-                              .map(t => (
-                                <button
-                                  key={t.id}
-                                  className="btn-small link-task-btn"
-                                  onClick={() => handleLinkTaskToMooraya(m.id, t.id)}
-                                  disabled={submitting}
-                                >
-                                  {t.title}
-                                </button>
-                              ))
-                          )}
-                          <button className="btn-tiny" onClick={() => setLinkingMoorayaId(null)}>閉じる</button>
-                        </div>
-                      ) : (
-                        <button
-                          className="btn-small btn-add-step"
-                          onClick={() => setLinkingMoorayaId(m.id)}
-                          style={{ marginTop: '0.5rem' }}
-                        >
-                          + やることを紐づける
-                        </button>
-                      )}
+                      ))}
                     </div>
                   )}
 
                   <div className="item-actions">
-                    <button className="btn-small" onClick={() => { setEditingMoorayaId(m.id); setEditingMoorayaContent(m.content) }}>編集</button>
                     <button className="btn-small btn-archive" onClick={() => handleArchiveMooraya(m.id)}>解消</button>
                     {(moorayaLinks[m.id] ?? []).length > 0 && (
                       <button className="btn-small btn-resolve" onClick={() => handleResolveMooraya(m.id)}>解消確認</button>
                     )}
                   </div>
-                </>
+                </div>
               )}
             </div>
           ))}
@@ -1021,23 +1336,30 @@ export function HomePage() {
       {activeTab === 'archive' && renderArchive()}
       {activeTab === 'mypage' && renderMyPage()}
 
+      {/* モーダル */}
+      {renderTaskModal()}
+      {renderMoorayaModal()}
+
       <nav className="tab-bar">
         <button
           className={`tab-btn ${activeTab === 'home' ? 'active' : ''}`}
           onClick={() => setActiveTab('home')}
         >
+          <span className="tab-icon">{'\u2302'}</span>
           ホーム
         </button>
         <button
           className={`tab-btn ${activeTab === 'archive' ? 'active' : ''}`}
           onClick={() => setActiveTab('archive')}
         >
+          <span className="tab-icon">{'\u2610'}</span>
           アーカイブ
         </button>
         <button
           className={`tab-btn ${activeTab === 'mypage' ? 'active' : ''}`}
           onClick={() => setActiveTab('mypage')}
         >
+          <span className="tab-icon">{'\u25CB'}</span>
           マイページ
         </button>
       </nav>
