@@ -13,7 +13,7 @@ echo ""
 echo "【1】ログイン..."
 LOGIN_RES=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}')
+  -d '{"email":"test-phase5@example.com","password":"testpass123"}')
 echo "$LOGIN_RES" | python3 -m json.tool 2>/dev/null || echo "$LOGIN_RES"
 
 TOKEN=$(echo "$LOGIN_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['accessToken'])" 2>/dev/null)
