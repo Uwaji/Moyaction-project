@@ -61,6 +61,7 @@ type Stats = {
 }
 
 type TabType = 'home' | 'archive' | 'mypage'
+type HomeContentTab = 'tasks' | 'mooraya'
 
 // ===== 定数 =====
 type TagLabel = { value: Mooraya['tag']; label: string }
@@ -101,6 +102,7 @@ const apiFetch = async (path: string, options?: RequestInit) => {
 export function HomePage() {
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<TabType>('home')
+  const [homeContentTab, setHomeContentTab] = useState<HomeContentTab>('tasks')
 
   // --- モヤモヤ state ---
   const [moorayaList, setMoorayaList] = useState<Mooraya[]>([])
@@ -490,11 +492,26 @@ export function HomePage() {
 
   // --- ホームタブ ---
   const renderHome = () => (
-    <main className="home-content">
+    <>
+      <div className="content-tabs">
+        <button
+          className={`content-tab ${homeContentTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setHomeContentTab('tasks')}
+        >
+          やりたいこと
+        </button>
+        <button
+          className={`content-tab ${homeContentTab === 'mooraya' ? 'active' : ''}`}
+          onClick={() => setHomeContentTab('mooraya')}
+        >
+          モヤモヤ
+        </button>
+      </div>
+      <main className="home-content">
       {error && <p className="form-error">{error}</p>}
 
       {/* ===== やりたいこと セクション ===== */}
-      <section className="section">
+      {homeContentTab === 'tasks' && <section className="section">
         <div className="section-header">
           <h2>やりたいこと</h2>
           <button className="btn-add" onClick={() => setShowTaskForm(!showTaskForm)}>
@@ -742,10 +759,10 @@ export function HomePage() {
             )
           })}
         </div>
-      </section>
+      </section>}
 
       {/* ===== モヤモヤ セクション ===== */}
-      <section className="section">
+      {homeContentTab === 'mooraya' && <section className="section">
         <div className="section-header">
           <h2>モヤモヤ</h2>
           <button className="btn-add" onClick={() => setShowMoorayaForm(!showMoorayaForm)}>
@@ -884,8 +901,9 @@ export function HomePage() {
             </div>
           ))}
         </div>
-      </section>
+      </section>}
     </main>
+    </>
   )
 
   // --- アーカイブタブ ---
