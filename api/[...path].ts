@@ -66,13 +66,14 @@ function handleAuthError(error: any, res: VercelResponse) {
 // =============================================
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const pathSegments = req.query.path
-  if (!pathSegments || !Array.isArray(pathSegments)) {
+  const rawPath = req.query.path
+  if (!rawPath) {
     return res.status(404).json({ success: false, message: 'Not Found' })
   }
 
+  // Vercel may pass path as string (single segment) or array (multiple segments)
+  const p: string[] = Array.isArray(rawPath) ? rawPath : [rawPath]
   const method = req.method ?? 'GET'
-  const p = pathSegments // shorthand
 
   try {
     // --- Health ---
