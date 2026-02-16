@@ -480,3 +480,407 @@
   resize: vertical;
   outline: none;
 }
+
+/* Clickable Headers */
+.clickable {
+  cursor: pointer;
+}
+
+.item-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.item-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.expand-icon {
+  font-size: 0.7rem;
+  color: #999;
+}
+
+/* Progress */
+.progress-text {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.progress-bar-container {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  margin-top: 0.4rem;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #f97316;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Overdue */
+.item-card.overdue {
+  border-color: #fecaca;
+}
+
+.overdue-mark {
+  font-size: 0.7rem;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Task Detail */
+.task-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eee;
+}
+
+.detail-heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+/* Steps */
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.step-item {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  background: #fff;
+}
+
+.step-completed {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.step-active {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.step-pending {
+  opacity: 0.6;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.step-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.step-checkbox-label input[type="checkbox"] {
+  accent-color: #f97316;
+  width: 1rem;
+  height: 1rem;
+}
+
+.step-title-done {
+  text-decoration: line-through;
+  color: #999;
+}
+
+/* Todos */
+.todos-list {
+  margin-left: 1.5rem;
+  margin-top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2rem 0.4rem;
+}
+
+.todo-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  flex: 1;
+}
+
+.todo-checkbox-label input[type="checkbox"] {
+  accent-color: #f97316;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.todo-title-done {
+  text-decoration: line-through;
+  color: #aaa;
+}
+
+/* Tiny Buttons */
+.btn-tiny {
+  padding: 0.15rem 0.4rem;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 0.7rem;
+  color: #888;
+  cursor: pointer;
+}
+
+.btn-tiny:hover {
+  background: #f5f5f5;
+}
+
+.btn-tiny.btn-danger {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-tiny.btn-save {
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.btn-tiny.btn-add-inline {
+  color: #f97316;
+  border-color: #fed7aa;
+  margin-top: 0.25rem;
+  margin-left: 1.5rem;
+}
+
+/* Add Inline */
+.add-inline {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.35rem;
+  margin-left: 1.5rem;
+}
+
+.add-inline input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.add-inline input:focus {
+  border-color: #f97316;
+}
+
+/* Step Add Button */
+.btn-add-step {
+  color: #f97316;
+  border-color: #fed7aa;
+}
+
+.btn-add-step:hover {
+  background: #fff7ed;
+}
+
+/* Complete Button */
+.btn-small.btn-complete {
+  color: #fff;
+  background: #16a34a;
+  border-color: #16a34a;
+  font-weight: 600;
+}
+
+.btn-small.btn-complete:hover {
+  background: #15803d;
+}
+
+/* Resolve Button */
+.btn-small.btn-resolve {
+  color: #7c3aed;
+  border-color: #c4b5fd;
+}
+
+.btn-small.btn-resolve:hover {
+  background: #f5f3ff;
+}
+
+/* Mooraya Detail */
+.mooraya-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eee;
+}
+
+.detail-empty {
+  font-size: 0.8rem;
+  color: #aaa;
+  padding: 0.5rem 0;
+}
+
+.linked-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.linked-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.linked-task-title {
+  flex: 1;
+  color: #444;
+}
+
+.linked-task-title.done {
+  text-decoration: line-through;
+  color: #aaa;
+}
+
+.done-badge {
+  font-size: 0.65rem;
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+/* Link Task Picker */
+.link-task-picker {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #fafafa;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.picker-label {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.link-task-btn {
+  text-align: left;
+  color: #f97316;
+  border-color: #fed7aa;
+}
+
+.link-task-btn:hover {
+  background: #fff7ed;
+}
+
+/* Archive Cards */
+.item-card.archived {
+  opacity: 0.85;
+  border-color: #d1d5db;
+}
+
+.completion-note {
+  font-size: 0.8rem;
+  color: #16a34a;
+  background: #f0fdf4;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.35rem;
+}
+
+.archive-reason {
+  font-size: 0.8rem;
+  color: #7c3aed;
+  background: #f5f3ff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.35rem;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.stat-card {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-card-accent {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.stat-card-wide {
+  grid-column: 1 / -1;
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.stat-card-accent .stat-number {
+  color: #f97316;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+/* Account Info */
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.account-info p {
+  font-size: 0.9rem;
+  color: #555;
+}
