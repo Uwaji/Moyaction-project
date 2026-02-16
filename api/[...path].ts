@@ -66,13 +66,14 @@ function handleAuthError(error: any, res: VercelResponse) {
 // =============================================
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const rawPath = req.query.path
-  if (!rawPath) {
+  // Parse path from URL: /api/auth/login?foo=bar → ['auth', 'login']
+  const url = (req.url ?? '').split('?')[0]
+  const p = url.replace(/^\/api\//, '').split('/').filter(Boolean)
+
+  if (p.length === 0) {
     return res.status(404).json({ success: false, message: 'Not Found' })
   }
 
-  // Vercel may pass path as string (single segment) or array (multiple segments)
-  const p: string[] = Array.isArray(rawPath) ? rawPath : [rawPath]
   const method = req.method ?? 'GET'
 
   try {
