@@ -149,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (p[0] === 'logs' && p.length === 1 && method === 'POST') return logsCreate(req, res)
 
     // Method Not Allowed or Not Found
-    return res.status(404).json({ success: false, message: 'Not Found', debug: { path: p, method, rawQuery: req.query } })
+    return res.status(404).json({ success: false, message: 'Not Found' })
   } catch (error: any) {
     console.error('Unhandled router error:', error)
     return res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' })
